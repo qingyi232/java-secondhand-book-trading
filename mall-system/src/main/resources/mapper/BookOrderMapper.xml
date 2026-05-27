@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.project.platform.mapper.BookOrderMapper">
+    <select id="queryPage" resultType="com.project.platform.entity.BookOrder">
+        SELECT bo.*,
+               b.book_name AS bookName,
+               b.main_img AS bookMainImg,
+               s.name AS shopName,
+               u.nickname AS userName
+        FROM book_order bo
+        LEFT JOIN book b ON bo.book_id = b.id
+        LEFT JOIN shop s ON bo.shop_id = s.id
+        LEFT JOIN user u ON bo.user_id = u.id
+        <include refid="queryConditions"/>
+        ORDER BY bo.id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="queryCount" resultType="int">
+        SELECT count(bo.id) FROM book_order bo
+        LEFT JOIN book b ON bo.book_id = b.id
+        LEFT JOIN shop s ON bo.shop_id = s.id
+        LEFT JOIN user u ON bo.user_id = u.id
+        <include refid="queryConditions"/>
+    </select>
+
+    <sql id="queryConditions">
+        <where>
+            <if test="query.orderNo != null and query.orderNo.trim() != ''">
+                AND bo.order_no LIKE CONCAT('%', #{query.orderNo}, '%')
+            </if>
+            <if test="query.userId != null and query.userId != 0">
+                AND bo.user_id = #{query.userId}
+            </if>
+            <if test="query.shopId != null and query.shopId != 0">
+                AND bo.shop_id = #{query.shopId}
+            </if>
+            <if test="query.status != null">
+                AND bo.status = #{query.status}
+            </if>
+        </where>
+    </sql>
+
+    <insert id="insert" parameterType="com.project.platform.entity.BookOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO book_order (order_no, book_id, shop_id, user_id, quantity, total_money, status,
+                                consignee_name, consignee_tel, consignee_address, remark)
+        VALUES (#{orderNo}, #{bookId}, #{shopId}, #{userId}, #{quantity}, #{totalMoney}, #{status},
+                #{consigneeName}, #{consigneeTel}, #{consigneeAddress}, #{remark})
+    </insert>
+
+    <update id="updateById" parameterType="com.project.platform.entity.BookOrder">
+        UPDATE book_order
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="trackingNumber != null">tracking_number = #{trackingNumber},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="orderEvaluateId != null">order_evaluate_id = #{orderEvaluateId},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+</mapper>

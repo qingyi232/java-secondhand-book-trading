@@ -1,0 +1,684 @@
+================================================================
+  二手书交易平台 - 代码说明文档
+================================================================
+
+一、项目概述
+================================================================
+
+项目名称：基于Java的二手书交易平台
+技术栈：
+  后端：Spring Boot 3.4.5 + MyBatis + MySQL 8.0
+  前端：Vue 3 + Element Plus + Vite + Axios
+  认证：JWT（JSON Web Token）
+  构建：Maven 3.x
+
+项目功能：
+  一个完整的二手书在线交易平台，支持三种角色：
+  - 管理员：后台管理所有数据
+  - 买家：浏览、搜索、购买二手书，评价订单
+  - 卖家：上架、管理书籍，处理订单
+
+================================================================
+二、项目目录结构
+================================================================
+
+mall-system/                          ← 项目根目录
+├── pom.xml                           ← Maven 项目配置文件（依赖管理）
+├── sql/
+│   └── sql.sql                       ← 数据库初始化脚本
+├── src/
+│   └── main/
+│       ├── java/com/project/platform/  ← Java 后端代码
+│       │   ├── ProjectManagement.java  ← 程序入口（Spring Boot 启动类）
+│       │   ├── controller/            ← 控制器层（处理HTTP请求）
+│       │   ├── entity/                ← 实体类（对应数据库表）
+│       │   ├── mapper/                ← 数据访问层（MyBatis接口）
+│       │   ├── interceptor/           ← 拦截器（登录验证）
+│       │   ├── config/                ← 配置类（跨域、拦截器等）
+│       │   ├── utils/                 ← 工具类
+│       │   └── vo/                    ← 视图对象（响应数据封装）
+│       └── resources/
+│           ├── application.yaml       ← 应用配置文件
+│           └── mapper/                ← MyBatis XML映射文件
+└── web/                               ← Vue 前端代码
+    ├── package.json                   ← 前端依赖配置
+    ├── vite.config.js                 ← Vite 构建配置
+    └── src/
+        ├── App.vue                    ← 根组件
+        ├── main.js                    ← 入口文件
+        ├── router/                    ← 路由配置
+        ├── utils/                     ← 工具函数（HTTP请求封装等）
+        └── views/                     ← 页面组件
+            ├── Login.vue              ← 登录页
+            ├── Register.vue           ← 注册页
+            ├── layout/                ← 布局组件
+            ├── front/                 ← 前台页面（买家/卖家）
+            └── admin/                 ← 后台管理页面
+
+================================================================
+三、数据库设计（15张表）
+================================================================
+
+1. admin（管理员表）
+   - id, username, password, nickname, avatar_url, tel, email, 
+     status, create_time
+
+2. user（买家/用户表）
+   - id, username, password, nickname, avatar_url, tel, email, 
+     status, balance, create_time
+
+3. shop（商家/卖家表）
+   - id, username, password, name, description, avatar_url, tel, 
+     email, status, balance, create_time
+
+4. book_category（书籍分类表）
+   - id, name, description, sort, create_time
+
+5. book（书籍表）
+   - id, book_name, author, publisher, isbn, price, original_price,
+     quality, stock, sales_volume, category_id, shop_id, main_img,
+     intro, status, create_time
+
+6. book_order（书籍订单表）
+   - id, order_no, book_id, shop_id, user_id, quantity, total_money,
+     status, consignee_name, consignee_tel, consignee_address,
+     tracking_number, remark, order_evaluate_id, create_time, 
+     update_time
+
+   订单状态(status)：
+   0=待支付, 1=待发货, 2=待收货, 3=已完成, 
+   4=已取消, 5=申请退款, 6=退款完成
+
+7. shopping_cart（购物车表）
+   - id, user_id, book_id, quantity, create_time
+
+8. order_evaluate（订单评价表）
+   - id, user_id, book_id, order_id, content, rate, create_time
+
+9. book_collect（书籍收藏表）
+   - id, user_id, book_id, create_time
+
+10. shop_collect（店铺收藏表）
+    - id, user_id, shop_id, create_time
+
+11. browsing_history（浏览记录表）
+    - id, user_id, book_id, create_time
+
+12. shipping_address（收货地址表）
+    - id, user_id, name, tel, address, is_default, create_time
+
+13. message（消息表）
+    - id, sender_id, sender_type, receiver_id, receiver_type, 
+      content, is_read, create_time
+
+14. announcement（公告表）
+    - id, title, content, status, create_time
+
+15. slideshow（轮播图表）
+    - id, img_url, link_url, sort, status, create_time
+
+================================================================
+四、后端代码说明
+================================================================
+
+【控制器层 Controller（处理前端请求）】
+
+CommonController.java          通用接口（登录、注册、获取当前用户）
+AdminController.java           管理员管理（CRUD）
+UserController.java            用户/买家管理（CRUD）
+ShopController.java            商家/卖家管理（CRUD）
+BookController.java            书籍管理（CRUD、上下架）
+BookCategoryController.java    书籍分类管理
+BookOrderController.java       书籍订单管理（下单、支付、发货、
+                               收货、取消、退款）
+ShoppingCartController.java    购物车管理（增删改查、批量下单）
+OrderEvaluateController.java   订单评价（添加评价、按书籍查询评价）
+BookCollectController.java     书籍收藏管理
+ShopCollectController.java     店铺收藏管理
+BrowsingHistoryController.java 浏览记录管理
+ShippingAddressController.java 收货地址管理
+MessageController.java         消息管理
+AnnouncementController.java    公告管理
+SlideshowController.java       轮播图管理
+FilesController.java           文件上传管理
+StatisticalReportFormsController.java  数据统计报表
+RecommendationController.java  书籍推荐
+
+【实体类 Entity（对应数据库表）】
+每个表对应一个 Java 类，字段与数据库表一一对应。
+使用驼峰命名（如 bookName 对应数据库的 book_name）。
+
+【数据访问层 Mapper】
+使用 MyBatis 框架，每个表有对应的 Mapper 接口和 XML 文件。
+- Mapper 接口定义方法签名
+- XML 文件编写具体 SQL 语句
+
+【拦截器 Interceptor】
+LoginInterceptor.java：登录拦截器
+- 检查请求头中的 token
+- 验证 JWT token 有效性
+- 将当前用户信息存入 ThreadLocal
+
+【配置类 Config】
+WebMvcConfig.java：Web MVC 配置
+- 配置跨域（CORS）允许前端访问
+- 配置拦截器和排除路径（登录、注册等不拦截）
+- 配置静态资源映射（文件上传）
+
+【工具类 Utils】
+JwtUtils.java：JWT 工具类（生成和解析 token）
+CurrentUserThreadLocal.java：线程本地变量（存储当前登录用户）
+PasswordUtils.java：密码加密工具
+
+【视图对象 VO】
+ResponseVO.java：统一响应格式（code, msg, data）
+PageVO.java：分页数据封装（list, total）
+
+================================================================
+五、前端代码说明
+================================================================
+
+【路由结构】
+
+/login          → Login.vue          登录页
+/register       → Register.vue       注册页
+
+前台页面（FrontLayout布局）：
+/index          → Index.vue          首页（轮播图、热门书籍、推荐）
+/bookList       → BookList.vue       书籍列表（搜索、筛选）
+/bookDetails/:id→ BookDetails.vue    书籍详情（信息、评价、加购）
+/shoppingCart   → ShoppingCart.vue    购物车
+/bookOrder      → BookOrder.vue      我的订单
+/personalCenter → PersonalCenter.vue 个人中心
+
+后台页面（AdminLayout布局）：
+/home           → Home.vue           后台首页（数据统计图表）
+/userManage     → UserManage.vue     用户管理
+/shopManage     → ShopManage.vue     商家管理
+/adminManage    → AdminManage.vue    管理员管理
+/bookManage     → BookManage.vue     书籍管理
+/bookCategoryManage → ...            书籍分类管理
+/bookOrderManage → ...               订单管理
+/orderEvaluateManage → ...           评价管理
+/bookCollectManage → ...             收藏管理
+/browsingHistoryManage → ...         浏览记录管理
+/slideshowManage → ...               轮播图管理
+/announcementManage → ...            公告管理
+/messageManage  → ...                消息管理
+
+【核心工具文件】
+src/utils/http.js：Axios 请求封装
+  - 统一添加 token 到请求头
+  - 统一处理响应（成功/失败/401跳转登录）
+  - 基础URL配置为 http://localhost:1000
+
+src/utils/tools.js：通用工具函数
+  - isLogin()：判断用户是否已登录
+  - getCurrentUser()：获取当前登录用户信息
+
+【UI 框架】
+Element Plus：Vue 3 的 UI 组件库
+  - 表格、表单、弹窗、分页、消息提示等组件
+  - 图标使用 @element-plus/icons-vue
+
+================================================================
+六、核心业务流程
+================================================================
+
+【1. 用户登录流程】
+前端 Login.vue → POST /login（用户名+密码+角色）
+  → 后端 CommonController.login()
+  → 查询对应角色表验证密码
+  → 生成 JWT token 返回
+  → 前端存储 token 和用户信息到 localStorage
+  → 跳转到对应首页
+
+【2. 书籍购买流程】
+浏览书籍 → 加入购物车 → 购物车结算
+  → 创建订单（status=0 待支付）
+  → 买家支付（status=1 待发货，扣除余额）
+  → 卖家发货（status=2 待收货，填写快递单号）
+  → 买家确认收货（status=3 已完成，余额转给卖家）
+  → 买家评价
+
+【3. 订单状态流转】
+0(待支付) → 1(待发货) → 2(待收货) → 3(已完成)
+0(待支付) → 4(已取消)
+1(待发货) → 5(申请退款) → 6(退款完成)
+2(待收货) → 5(申请退款) → 6(退款完成)
+
+【4. 文件上传流程】
+前端选择文件 → POST /file/upload（multipart/form-data）
+  → 后端 FilesController 保存到 uploads/ 目录
+  → 返回文件访问 URL
+  → 前端将 URL 存入对应字段
+
+================================================================
+七、关键配置说明
+================================================================
+
+【application.yaml 配置项】
+server.port: 1000              后端服务端口
+spring.datasource.url          数据库连接地址
+spring.datasource.username     数据库用户名
+spring.datasource.password     数据库密码
+spring.servlet.multipart       文件上传大小限制
+mybatis.mapper-locations       MyBatis XML 映射文件位置
+mybatis.configuration          MyBatis 配置（驼峰转换、SQL日志）
+files.uploads.path             文件上传存储路径
+files.uploads.baseUrl          文件访问基础URL
+
+【前端 vite.config.js】
+- Vue 3 + JSX 插件
+- @ 别名指向 src 目录
+- 默认开发服务器端口 5173
+
+================================================================
+八、依赖说明
+================================================================
+
+【后端主要依赖】
+spring-boot-starter-web   Web 框架（内嵌 Tomcat）
+mysql-connector-j         MySQL 数据库驱动
+mybatis-spring-boot       MyBatis ORM 框架
+fastjson                  JSON 序列化/反序列化
+jjwt                      JWT 令牌生成与解析
+hutool-all                Java 工具类库
+commons-io                IO 操作工具
+commons-lang3             字符串/对象工具
+spring-boot-starter-aop   AOP 面向切面编程
+lombok                    代码简化（getter/setter 自动生成）
+
+【前端主要依赖】
+vue 3.4                   前端框架
+vue-router 4              路由管理
+pinia                     状态管理
+element-plus 2.8          UI 组件库
+axios 1.7                 HTTP 请求库
+echarts 5.5               图表库（数据统计）
+vite 5.3                  构建工具
+
+================================================================
+九、API 接口详细说明
+================================================================
+
+【通用接口 /common】
+POST /common/login              登录（返回JWT token）
+  请求：{ username, password, type }
+  type取值：ADMIN（管理员）、USER（买家）、SHOP（卖家）
+  响应：{ code:200, data:"eyJhbGc..." }（JWT token字符串）
+
+PUT  /common/register           注册
+  请求：{ type, username, password, ... }
+  根据type自动注册到对应角色表
+
+POST /common/updateCurrentUser  修改当前登录用户信息
+POST /common/updatePassword     修改密码
+  请求：{ oldPassword, newPassword }
+
+POST /common/resetPassword      重置密码（管理员操作）
+  参数：type（用户类型）、id（用户ID）
+
+GET  /common/currentUser        获取当前登录用户信息
+  通过token中的信息查询对应角色表返回
+
+【书籍接口 /book】
+GET    /book/page               分页查询书籍（支持关键词搜索、分类筛选）
+GET    /book/selectById/{id}    根据ID查询书籍详情
+POST   /book/add                新增书籍（卖家操作）
+PUT    /book/update             更新书籍信息
+DELETE /book/delBatch           批量删除书籍
+
+【书籍订单接口 /bookOrder】
+GET    /bookOrder/page              分页查询订单
+POST   /bookOrder/create            创建订单（生成订单号，状态为待支付）
+PUT    /bookOrder/pay/{id}          支付订单（状态改为待发货，扣减库存）
+PUT    /bookOrder/ship/{id}         发货（状态改为待收货，填写快递单号）
+  参数：trackingNumber（快递单号）
+PUT    /bookOrder/receive/{id}      确认收货（状态改为已完成）
+PUT    /bookOrder/cancel/{id}       取消订单（待发货状态取消需恢复库存）
+PUT    /bookOrder/applyRefund/{id}  申请退款
+PUT    /bookOrder/approveRefund/{id} 审批退款（恢复库存）
+
+【购物车接口 /shoppingCart】
+GET    /shoppingCart/page        分页查询购物车
+GET    /shoppingCart/list        获取购物车列表
+GET    /shoppingCart/selectById/{id} 查询购物车项
+POST   /shoppingCart/add         添加到购物车（同一书籍会合并数量）
+PUT    /shoppingCart/update      更新购物车数量
+DELETE /shoppingCart/delBatch    批量删除购物车项
+POST   /shoppingCart/createOrder 购物车批量下单
+  请求：{ ids, consigneeName, consigneeTel, consigneeAddress, remark }
+
+【收货地址接口 /shippingAddress】
+GET    /shippingAddress/page     分页查询地址
+GET    /shippingAddress/list     获取地址列表
+POST   /shippingAddress/add      新增地址
+PUT    /shippingAddress/update   更新地址
+DELETE /shippingAddress/delBatch 批量删除地址
+
+【订单评价接口 /orderEvaluate】
+POST   /orderEvaluate/add       添加评价
+GET    /orderEvaluate/page      分页查询评价
+
+【收藏接口】
+/bookCollect/page | add | delBatch    书籍收藏（增删查）
+/shopCollect/page | add | delBatch    店铺收藏（增删查）
+
+【浏览记录接口 /browsingHistory】
+GET    /browsingHistory/page     查询浏览记录
+POST   /browsingHistory/add      添加浏览记录
+DELETE /browsingHistory/delBatch 批量删除浏览记录
+
+【推荐接口 /recommendation】
+GET /recommendation/homepage     获取首页推荐
+  参数：collaborativeType（推荐算法类型：hybrid/user-based/item-based）
+        collaborativeSize（推荐数量，默认12）
+        normalSize（普通推荐数量，默认3）
+
+【消息接口 /message】
+GET    /message/page             分页查询消息
+POST   /message/add              发送消息
+PUT    /message/update           更新消息（标记已读等）
+DELETE /message/delBatch         批量删除消息
+
+【公告接口 /announcement】
+GET    /announcement/page        分页查询公告
+POST   /announcement/add         新增公告
+PUT    /announcement/update      更新公告
+DELETE /announcement/delBatch    批量删除公告
+
+【轮播图接口 /slideshow】
+GET    /slideshow/page           分页查询轮播图
+POST   /slideshow/add            新增轮播图
+PUT    /slideshow/update         更新轮播图
+DELETE /slideshow/delBatch       批量删除轮播图
+
+【文件接口 /file】（不需要登录）
+POST   /file/upload              文件上传（multipart/form-data）
+GET    /file/{fileName}          文件下载/访问
+
+【数据统计接口 /statisticalReportForms】
+GET /statisticalReportForms/productSalesTotalAmountChart/{day}
+  获取近N天的销售额折线图数据
+GET /statisticalReportForms/productTypeProportionOfChar
+  获取书籍分类占比饼图数据
+
+【管理接口】
+/admin/page | selectById | add | update | delBatch  管理员CRUD
+/user/page | selectById | add | update | delBatch   买家CRUD
+/shop/page | selectById | add | update | delBatch   卖家CRUD
+/bookCategory/page | list | add | update | delBatch 书籍分类CRUD
+
+================================================================
+十、安全认证机制
+================================================================
+
+【1. JWT 认证流程】
+
+本项目使用 JWT（JSON Web Token）实现无状态身份认证：
+
+(1) 用户登录时，后端验证用户名密码，验证通过后生成JWT token
+(2) JWT 使用 HS256 算法签名，密钥为配置的固定字符串
+(3) Token 有效期为 30 天
+(4) Token 中包含用户信息：id、username、nickname、type（角色类型）
+(5) 前端收到 token 后存储在 localStorage
+
+【2. 请求拦截机制】
+
+LoginInterceptor（登录拦截器）工作流程：
+(1) 拦截所有请求（/** 路径）
+(2) 排除不需要登录的接口：/common/login、/common/register、/file/**
+(3) 对于 OPTIONS 预检请求直接放行（支持CORS）
+(4) 从请求头 "token" 字段获取 JWT token
+(5) 如果 token 为空，返回 401 状态码
+(6) 验证 token 有效性（签名、过期时间）
+(7) 解析 token 中的用户信息，存入 ThreadLocal
+(8) 请求处理完毕后清除 ThreadLocal，防止内存泄漏
+
+【3. 用户信息传递】
+
+CurrentUserThreadLocal 工具类：
+- 使用 ThreadLocal<CurrentUserDTO> 在同一请求线程内传递当前用户信息
+- 拦截器 preHandle 中 set()，afterCompletion 中 clear()
+- Controller/Service 层通过 CurrentUserThreadLocal.getCurrentUser() 获取
+
+【4. 跨域配置】
+
+CorsConfig 配置类：
+- 允许所有来源（*）的跨域请求
+- 允许所有 HTTP 方法（GET/POST/PUT/DELETE 等）
+- 允许所有请求头
+- CORS 预检缓存时间为 24 小时
+
+【5. 角色权限设计】
+
+三种角色通过 type 字段区分：
+- ADMIN：管理员，可访问后台管理所有功能
+- USER：买家，可浏览书籍、下单购买、评价
+- SHOP：卖家，可管理自己的书籍和订单
+注意：当前系统通过业务逻辑代码（if判断type）控制权限，
+      而非使用 Spring Security 等框架级别的权限控制。
+
+================================================================
+十一、推荐算法说明（协同过滤）
+================================================================
+
+本项目实现了基于协同过滤的书籍推荐功能，包含三种推荐算法：
+
+【1. 用户-商品评分矩阵构建】
+
+评分规则（多种用户行为加权）：
+  浏览记录 = 1 分
+  收藏记录 = 2 分
+  购买记录 = 3 分
+  评价记录 = 评价星级分数
+
+示例：用户A浏览了书籍X（+1分）、又收藏了书籍X（+2分）→ 
+      用户A对书籍X的总评分 = 3分
+
+【2. 基于用户的协同过滤（User-Based CF）】
+
+原理：找到与目标用户行为相似的用户，推荐这些相似用户喜欢但
+      目标用户未接触过的书籍。
+
+步骤：
+(1) 构建用户-商品评分矩阵
+(2) 使用余弦相似度计算用户之间的相似度
+(3) 找出与目标用户最相似的用户群体
+(4) 从相似用户喜欢的商品中筛选目标用户未交互过的商品
+(5) 按加权评分（相似度 × 评分）排序，取Top-N推荐
+
+余弦相似度公式：
+  sim(A,B) = (A·B) / (||A|| × ||B||)
+  其中 A·B 为两个用户评分向量的点积
+  ||A|| 和 ||B|| 为各自向量的模
+
+【3. 基于物品的协同过滤（Item-Based CF）】
+
+原理：找到与用户已交互商品相似的其他商品进行推荐。
+
+步骤：
+(1) 构建用户-商品评分矩阵
+(2) 转置为商品-用户矩阵
+(3) 使用余弦相似度计算商品之间的相似度
+(4) 对用户已交互的每个商品，找出最相似的未交互商品
+(5) 按相似度累加排序，取Top-N推荐
+
+【4. 混合推荐（Hybrid）】
+
+策略：将用户协同过滤和物品协同过滤的结果合并
+- 一半名额分配给 User-Based CF
+- 一半名额分配给 Item-Based CF
+- 合并后去重
+- 如果推荐数量不足，用热门商品（按销量排序）补充
+
+【5. 冷启动处理】
+
+当用户没有任何行为记录（新用户）时：
+- 不使用协同过滤
+- 直接返回热门商品（按销量倒序排列）
+
+【6. 首页推荐去重机制】
+
+RecommendationController 的 homepage 接口：
+- 先获取协同过滤推荐列表
+- 记录已推荐的商品ID
+- 获取普通推荐时排除已推荐的商品
+- 确保两个推荐区域不出现重复书籍
+
+================================================================
+十二、数据统计报表
+================================================================
+
+后台首页提供数据可视化图表（使用 ECharts 渲染）：
+
+【1. 销售额趋势图】
+接口：GET /statisticalReportForms/productSalesTotalAmountChart/{day}
+功能：统计近N天每天的书籍销售总金额
+返回：EchartsDataVO（包含日期列表和对应销售额数据）
+前端：使用 ECharts 折线图展示
+
+【2. 书籍分类占比图】
+接口：GET /statisticalReportForms/productTypeProportionOfChar
+功能：统计各书籍分类下的书籍数量占比
+返回：List<ValueNameVO>（每个分类的名称和数量）
+前端：使用 ECharts 饼图展示
+
+================================================================
+十三、异常处理机制
+================================================================
+
+【1. 自定义异常类 CustomException】
+
+继承 RuntimeException，携带 HTTP 状态码和错误消息。
+两种构造方式：
+- CustomException(String msg)：默认使用 409 CONFLICT 状态码
+- CustomException(HttpStatus status, String msg)：自定义状态码
+
+【2. 全局异常处理器 GlobalExceptionHandler】
+
+使用 @ControllerAdvice + @ExceptionHandler 注解：
+- 捕获所有 CustomException
+- 将异常信息封装为 ResponseVO（code + msg）
+- 返回对应的 HTTP 状态码
+
+【3. 业务异常场景举例】
+
+订单操作：
+- "订单不存在"           → 409
+- "订单状态不允许此操作"  → 409
+- "库存不足"             → 409
+
+购物车操作：
+- "只有买家才能添加书籍到购物车" → 409
+
+登录认证：
+- "用户类型错误"         → 409
+- "token无效"           → 401 UNAUTHORIZED
+
+【4. 订单状态机】
+
+系统通过状态转换映射表控制订单状态流转的合法性：
+  状态0(待支付)   → 可转为 1(待发货) 或 4(已取消)
+  状态1(待发货)   → 可转为 2(待收货) 或 5(申请退款)
+  状态2(待收货)   → 可转为 3(已完成) 或 5(申请退款)
+  状态3(已完成)   → 终态，不可转换
+  状态4(已取消)   → 终态，不可转换
+  状态5(申请退款) → 可转为 6(退款完成)
+  状态6(退款完成) → 终态，不可转换
+
+任何非法状态转换都会抛出 CustomException。
+
+================================================================
+十四、统一响应格式
+================================================================
+
+所有API接口返回统一的 ResponseVO 格式：
+
+成功响应：
+  { "code": 200, "msg": "操作成功", "data": <具体数据> }
+
+失败响应：
+  { "code": <HTTP状态码>, "msg": "操作失败", "data": <错误信息> }
+
+分页数据使用 PageVO 封装：
+  { "list": [<数据列表>], "total": <总记录数> }
+
+================================================================
+十五、项目部署运行指南
+================================================================
+
+【1. 环境准备】
+  - JDK 17 或以上版本
+  - Maven 3.x
+  - MySQL 8.0
+  - Node.js 16 或以上版本
+
+【2. 数据库初始化】
+  (1) 创建 MySQL 数据库
+  (2) 执行 mall-system/sql/sql.sql 脚本建表和初始化数据
+  (3) 修改 application.yaml 中的数据库连接配置
+
+【3. 后端启动】
+  (1) 进入 mall-system 目录
+  (2) 执行 mvn clean install 安装依赖
+  (3) 运行启动类 ProjectManagement.java
+  (4) 后端启动在 http://localhost:1000
+
+【4. 前端启动】
+  (1) 进入 mall-system/web 目录
+  (2) 执行 npm install 安装依赖
+  (3) 执行 npm run dev 启动开发服务器
+  (4) 前端启动在 http://localhost:5173
+
+【5. 访问系统】
+  浏览器打开 http://localhost:5173 进入登录页
+  默认账号可通过数据库 SQL 脚本查看
+
+================================================================
+十六、Service 层详细说明
+================================================================
+
+【BookOrderServiceImpl 订单服务核心逻辑】
+
+1. createOrder（创建订单）：
+   - 校验书籍是否存在、库存是否充足
+   - 生成订单号：BO + 年月日时分秒 + 4位随机数
+   - 自动设置卖家ID（从书籍中获取）
+   - 自动设置买家ID（从当前登录用户获取）
+   - 计算总金额 = 单价 × 数量
+   - 初始状态为0（待支付）
+
+2. pay（支付）：
+   - 将订单状态从0改为1
+   - 扣减书籍库存
+
+3. ship（发货）：
+   - 将订单状态从1改为2
+   - 记录快递单号
+
+4. cancel（取消）：
+   - 如果订单处于待发货状态(1)，需恢复库存
+   - 将状态改为4（已取消）
+
+5. approveRefund（审批退款）：
+   - 恢复书籍库存
+   - 将状态改为6（退款完成）
+
+【ShoppingCartServiceImpl 购物车服务核心逻辑】
+
+1. insert（加入购物车）：
+   - 只有买家（USER）角色才能操作
+   - 如果该书籍已在购物车中，合并数量
+   - 否则新增购物车记录
+
+2. createOrder（购物车批量下单）：
+   - 遍历选中的购物车项
+   - 逐一创建订单
+   - 下单成功后删除对应购物车项
+   - 如果部分下单失败，收集错误信息统一提示
+
+================================================================
+（文档完）
+================================================================

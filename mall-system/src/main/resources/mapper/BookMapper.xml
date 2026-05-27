@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.project.platform.mapper.BookMapper">
+    <select id="queryPage" resultType="com.project.platform.entity.Book">
+        SELECT book.*,
+               shop.name AS shopName,
+               book_category.name AS categoryName
+        FROM book
+        LEFT JOIN shop ON book.shop_id = shop.id
+        LEFT JOIN book_category ON book.category_id = book_category.id
+        <include refid="queryConditions"/>
+        ORDER BY book.id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="queryCount" resultType="int">
+        SELECT count(book.id) FROM book
+        LEFT JOIN shop ON book.shop_id = shop.id
+        LEFT JOIN book_category ON book.category_id = book_category.id
+        <include refid="queryConditions"/>
+    </select>
+
+    <sql id="queryConditions">
+        <where>
+            <if test="query.bookName != null and query.bookName.trim() != ''">
+                AND book.book_name LIKE CONCAT('%', #{query.bookName}, '%')
+            </if>
+            <if test="query.author != null and query.author.trim() != ''">
+                AND book.author LIKE CONCAT('%', #{query.author}, '%')
+            </if>
+            <if test="query.categoryId != null and query.categoryId != 0">
+                AND book.category_id = #{query.categoryId}
+            </if>
+            <if test="query.shopId != null and query.shopId != 0">
+                AND book.shop_id = #{query.shopId}
+            </if>
+            <if test="query.quality != null and query.quality.trim() != ''">
+                AND book.quality = #{query.quality}
+            </if>
+            <if test="query.reviewStatus != null and query.reviewStatus.trim() != ''">
+                AND book.review_status = #{query.reviewStatus}
+            </if>
+            <if test="query.onlyApproved != null and query.onlyApproved == 'true'">
+                AND book.review_status = '已通过' AND book.status = '上架'
+            </if>
+            <if test="query.minPrice != null">
+                AND book.price &gt;= #{query.minPrice}
+            </if>
+            <if test="query.maxPrice != null">
+                AND book.price &lt;= #{query.maxPrice}
+            </if>
+        </where>
+    </sql>
+
+    <insert id="insert" parameterType="com.project.platform.entity.Book" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO book
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bookName != null">book_name,</if>
+            <if test="author != null">author,</if>
+            <if test="publisher != null">publisher,</if>
+            <if test="isbn != null">isbn,</if>
+            <if test="originalPrice != null">original_price,</if>
+            <if test="price != null">price,</if>
+            <if test="quality != null">quality,</if>
+            <if test="categoryId != null">category_id,</if>
+            <if test="mainImg != null">main_img,</if>
+            <if test="imgList != null">img_list,</if>
+            <if test="intro != null">intro,</if>
+            <if test="stock != null">stock,</if>
+            <if test="salesVolume != null">sales_volume,</if>
+            <if test="shopId != null">shop_id,</if>
+            <if test="reviewStatus != null">review_status,</if>
+            <if test="status != null">status,</if>
+        </trim>
+        VALUES
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bookName != null">#{bookName},</if>
+            <if test="author != null">#{author},</if>
+            <if test="publisher != null">#{publisher},</if>
+            <if test="isbn != null">#{isbn},</if>
+            <if test="originalPrice != null">#{originalPrice},</if>
+            <if test="price != null">#{price},</if>
+            <if test="quality != null">#{quality},</if>
+            <if test="categoryId != null">#{categoryId},</if>
+            <if test="mainImg != null">#{mainImg},</if>
+            <if test="imgList != null">#{imgList},</if>
+            <if test="intro != null">#{intro},</if>
+            <if test="stock != null">#{stock},</if>
+            <if test="salesVolume != null">#{salesVolume},</if>
+            <if test="shopId != null">#{shopId},</if>
+            <if test="reviewStatus != null">#{reviewStatus},</if>
+            <if test="status != null">#{status},</if>
+        </trim>
+    </insert>
+
+    <update id="updateById" parameterType="com.project.platform.entity.Book">
+        UPDATE book
+        <set>
+            <if test="bookName != null">book_name = #{bookName},</if>
+            <if test="author != null">author = #{author},</if>
+            <if test="publisher != null">publisher = #{publisher},</if>
+            <if test="isbn != null">isbn = #{isbn},</if>
+            <if test="originalPrice != null">original_price = #{originalPrice},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="quality != null">quality = #{quality},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="mainImg != null">main_img = #{mainImg},</if>
+            <if test="imgList != null">img_list = #{imgList},</if>
+            <if test="intro != null">intro = #{intro},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="salesVolume != null">sales_volume = #{salesVolume},</if>
+            <if test="shopId != null">shop_id = #{shopId},</if>
+            <if test="reviewStatus != null">review_status = #{reviewStatus},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="removeByIds">
+        DELETE FROM book WHERE id IN
+        <foreach item="id" collection="list" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

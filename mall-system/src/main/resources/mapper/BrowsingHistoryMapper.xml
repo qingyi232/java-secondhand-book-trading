@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.project.platform.mapper.BrowsingHistoryMapper">
+    <select id="queryPage" resultType="com.project.platform.entity.BrowsingHistory">
+        SELECT bh.*, b.book_name AS bookName, b.main_img AS bookMainImg, b.price AS bookPrice
+        FROM browsing_history bh
+        LEFT JOIN book b ON bh.book_id = b.id
+        <where>
+            <if test="query.userId != null and query.userId != 0">
+                AND bh.user_id = #{query.userId}
+            </if>
+        </where>
+        ORDER BY bh.id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="queryCount" resultType="int">
+        SELECT count(bh.id) FROM browsing_history bh
+        <where>
+            <if test="query.userId != null and query.userId != 0">
+                AND bh.user_id = #{query.userId}
+            </if>
+        </where>
+    </select>
+</mapper>
